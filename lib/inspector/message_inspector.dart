@@ -49,8 +49,31 @@ class MessageInspector {
 
     // === Brand name mismatch (very strong signal) ===
     if (_hasBrandMismatch(message, url)) {
-      scamScore += 5;
+      scamScore += 6;
       reasons.add('Brand name mentioned in message (e.g. MTN) but the link domain is NOT official.');
+    }
+
+    // === High-value scam categories ===
+    
+    // Celebrity + Money/Gift (very strong)
+    if ((lowerMessage.contains('davido') || lowerMessage.contains('wizkid') || lowerMessage.contains('burna')) &&
+        (lowerMessage.contains('cash') || lowerMessage.contains('gift') || lowerMessage.contains('n100') || lowerMessage.contains('n50'))) {
+      scamScore += 5;
+      reasons.add('Celebrity name + large cash gift is a very common WhatsApp scam.');
+    }
+
+    // Government + Money (very strong)
+    if ((lowerMessage.contains('federal government') || lowerMessage.contains('government')) &&
+        (lowerMessage.contains('palliative') || lowerMessage.contains('n50,000') || lowerMessage.contains('grant'))) {
+      scamScore += 5;
+      reasons.add('Government money/palliative scams are extremely common right now.');
+    }
+
+    // Lottery / Win + Money
+    if ((lowerMessage.contains('won') || lowerMessage.contains('winner') || lowerMessage.contains('congratulations')) &&
+        (lowerMessage.contains('n2,') || lowerMessage.contains('million') || lowerMessage.contains('bet9ja'))) {
+      scamScore += 5;
+      reasons.add('Lottery or betting win messages asking you to claim are almost always scams.');
     }
 
     // Strong scam signals
@@ -76,6 +99,13 @@ class MessageInspector {
         (lowerMessage.contains('mtn') && lowerMessage.contains('glo'))) {
       scamScore += 3;
       reasons.add('Asking you to "choose your network" is a classic scam template.');
+    }
+
+    // Strong urgency language
+    if (lowerMessage.contains('immediately') || lowerMessage.contains('urgent') || 
+        lowerMessage.contains('closes today') || lowerMessage.contains('before it closes')) {
+      scamScore += 3;
+      reasons.add('Uses strong urgency language ("immediately", "before it closes") to pressure you.');
     }
 
     // Urgency / FOMO language
@@ -107,11 +137,11 @@ class MessageInspector {
       }
     }
 
-    // Final decision based on score
+    // Final decision based on score (more aggressive)
     if (verdict == VerdictType.unknown) {
-      if (scamScore >= 4) {
+      if (scamScore >= 5) {
         verdict = VerdictType.fake;
-      } else if (scamScore >= 2) {
+      } else if (scamScore >= 3) {
         verdict = VerdictType.beCareful;
       } else {
         verdict = VerdictType.unknown;
