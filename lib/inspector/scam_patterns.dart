@@ -82,6 +82,43 @@ class ScamPatternLibrary {
       reason: 'Requests to verify or login through a link are frequently used in phishing attacks.',
       categories: ['phishing'],
     ),
+
+    // === Additional Strong Patterns ===
+    ScamPattern(
+      id: 'investment_double',
+      keywords: ['double your money', 'investment', 'crypto', 'bitcoin', 'return'],
+      score: 7,
+      reason: 'Investment scams promising high returns in a short time are extremely common.',
+      categories: ['investment', 'crypto'],
+    ),
+    ScamPattern(
+      id: 'school_fees_admission',
+      keywords: ['school fees', 'admission', 'jamb', 'waec', 'results', 'post utme'],
+      score: 6,
+      reason: 'Scammers frequently target students and parents with fake school-related payments.',
+      categories: ['education'],
+    ),
+    ScamPattern(
+      id: 'job_offer',
+      keywords: ['job offer', 'you have been selected', 'congratulations', 'interview'],
+      score: 6,
+      reason: 'Fake job offers that ask for payment or personal details are very common.',
+      categories: ['job'],
+    ),
+    ScamPattern(
+      id: 'crypto_airdrop',
+      keywords: ['airdrop', 'free tokens', 'claim your crypto', 'wallet'],
+      score: 7,
+      reason: 'Crypto airdrop scams are designed to steal your wallet seed phrase or private keys.',
+      categories: ['crypto'],
+    ),
+    ScamPattern(
+      id: 'romance_scam',
+      keywords: ['i love you', 'send money', 'emergency', 'my account'],
+      score: 6,
+      reason: 'Romance scams often use emotional manipulation to get victims to send money.',
+      categories: ['romance'],
+    ),
   ];
 
   static List<ScamPattern> matchPatterns(String text) {

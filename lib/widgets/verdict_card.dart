@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trueurl/models/verdict.dart';
+import 'package:trueurl/inspector/educational_tips.dart';
 
 class VerdictCard extends StatelessWidget {
   final CheckResult result;
@@ -163,6 +164,46 @@ class VerdictCard extends StatelessWidget {
                   color: Colors.grey.shade600,
                 ),
               ),
+
+              // Educational Tip
+              if (result.verdict != VerdictType.official &&
+                  result.verdict != VerdictType.unknown) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lightbulb_outline, color: Colors.blue, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Tip',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              EducationalTips.getTip(result.verdict, [])?.message ??
+                                  'Always verify directly on the official website.',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

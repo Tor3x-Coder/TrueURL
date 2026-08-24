@@ -42,6 +42,7 @@ class CheckResult {
   final String? originalInput;
   final DateTime checkedAt;
   final bool isMessageMode;
+  final int confidenceScore; // 0-100
 
   const CheckResult({
     required this.verdict,
@@ -52,6 +53,7 @@ class CheckResult {
     this.originalInput,
     required this.checkedAt,
     this.isMessageMode = false,
+    this.confidenceScore = 70,
   });
 
   Map<String, dynamic> toJson() => {
@@ -63,6 +65,7 @@ class CheckResult {
         'originalInput': originalInput,
         'checkedAt': checkedAt.toIso8601String(),
         'isMessageMode': isMessageMode,
+        'confidenceScore': confidenceScore,
       };
 
   factory CheckResult.fromJson(Map<String, dynamic> json) => CheckResult(
@@ -77,5 +80,6 @@ class CheckResult {
         originalInput: json['originalInput'],
         checkedAt: DateTime.parse(json['checkedAt']),
         isMessageMode: json['isMessageMode'] ?? false,
+        confidenceScore: json['confidenceScore'] ?? 70,
       );
 }
