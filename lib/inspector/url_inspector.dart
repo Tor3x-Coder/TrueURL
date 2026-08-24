@@ -1,5 +1,6 @@
 import 'package:trueurl/models/brand.dart';
 import 'package:trueurl/models/verdict.dart';
+import 'package:trueurl/inspector/advanced_url_analyzer.dart';
 
 class UrlInspector {
   static final RegExp _urlRegex = RegExp(
@@ -72,35 +73,34 @@ class UrlInspector {
       );
     }
 
-    // === Conservative Brand Impersonation Check ===
-    // Only flag obvious lookalikes (e.g. mtn-gift.com, jamb-login.xyz)
-    // We are VERY careful not to flag real domains.
-    final knownBrandNames = ['mtn', 'airtel', 'jamb', 'waec', 'opay', 'palmpay', 'kuda'];
+    // === Advanced Brand Impersonation Check ===
     final matchedBrand = BrandBook.findByDomain(host);
 
     if (matchedBrand == null) {
-      for (final brandName in knownBrandNames) {
-        // Only check if brand appears in the domain AND it looks clearly fake
-        if (host.contains(brandName)) {
-          final looksLikeLookalike = 
-              host.contains('$brandName-') ||           // mtn-gift.com
-              host.contains('-$brandName') ||           // get-mtn.com
-              host.contains('${brandName}login') ||     // jamblogin.com
-              host.contains('${brandName}verify') ||
-              _suspiciousTld.hasMatch(host);            // .xyz, .top etc.
+      // Use the advanced analyzer
+      if (AdvancedUrlAnalyzer.hasBrandImpersonation(host, path)) {
+        return CheckResult(
+          verdict: VerdictType.fake,
+          title: 'Likely Scam Link',
+          reasons: [
+            'A popular brand name appears in the link, but this is not an official website for that brand.',
+            'This is a very common impersonation technique used by scammers.',
+          ],
+          checkedAt: DateTime.now(),
+        );
+      }
 
-          if (looksLikeLookalike) {
-            return CheckResult(
-              verdict: VerdictType.fake,
-              title: 'Likely Scam Link',
-              reasons: [
-                'The domain contains "$brandName" but is not an official site.',
-                'This is a common impersonation technique.',
-              ],
-              checkedAt: DateTime.now(),
-            );
-          }
-        }
+      // Additional structural risk scoring
+      final riskScore = AdvancedUrlAnalyzer.calculateUrlRiskScore(host, path);
+      if (riskScore >= 6) {
+        return CheckResult(
+          verdict: VerdictType.fake,
+          title: 'Likely Scam Link',
+          reasons: [
+            'This link has multiple high-risk characteristics (suspicious structure, brand impersonation, or risky domain).',
+          ],
+          checkedAt: DateTime.now(),
+        );
       }
     }
 
