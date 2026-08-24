@@ -4,6 +4,7 @@ import 'package:trueurl/inspector/message_inspector.dart';
 import 'package:trueurl/inspector/homograph_detector.dart';
 import 'package:trueurl/claim/online_checker.dart';
 import 'package:trueurl/services/connectivity_service.dart';
+import 'package:trueurl/inspector/inspector.dart';
 
 class EnhancedInspector {
   /// Main check method with optional online enhancement

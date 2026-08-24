@@ -3,11 +3,10 @@ import 'dart:async';
 
 class ConnectivityService {
   static final Connectivity _connectivity = Connectivity();
-  static Stream<ConnectivityResult> get onConnectivityChanged =>
-      _connectivity.onConnectivityChanged;
 
   static Future<bool> isOnline() async {
     final result = await _connectivity.checkConnectivity();
-    return result != ConnectivityResult.none;
+    // connectivity_plus v6+ returns List<ConnectivityResult>
+    return result.isNotEmpty && result.first != ConnectivityResult.none;
   }
 }
