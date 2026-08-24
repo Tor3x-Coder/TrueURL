@@ -2,6 +2,7 @@ import 'package:trueurl/models/verdict.dart';
 import 'package:trueurl/inspector/url_inspector.dart';
 import 'package:trueurl/inspector/reasons_engine.dart';
 import 'package:trueurl/inspector/scam_patterns.dart';
+import 'package:trueurl/inspector/scoring_engine.dart';
 
 class MessageInspector {
   static final List<String> _scamKeywords = [
@@ -37,65 +38,26 @@ class MessageInspector {
 
   /// Inspects the full message text for scam patterns + runs URL inspector
   static CheckResult inspectMessage(String message) {
-    final lowerMessage = message.toLowerCase();
-    final detectedSignals = <String>[];
-    VerdictType verdict = VerdictType.unknown;
-    int scamScore = 0;
-
-    // Extract any URL first
     final url = UrlInspector.extractUrl(message);
-    CheckResult? urlResult;
-    if (url != null) {
-      urlResult = UrlInspector.inspectUrl(url);
-    }
 
-    // === Use Advanced Scam Pattern Library ===
-    final matchedPatterns = ScamPatternLibrary.matchPatterns(message);
-    for (final pattern in matchedPatterns) {
-      scamScore += pattern.score;
-      detectedSignals.add(pattern.id);
-    }
+    // Use the new Scoring Engine
+    final scoringResult = ScoringEngine.calculate(
+      input: message,
+      isMessage: true,
+      url: url,
+      detectedSignals: [],
+    );
 
-    // Brand name mismatch (still very strong)
-    if (_hasBrandMismatch(message, url)) {
-      scamScore += 6;
-      detectedSignals.add('brand_mismatch');
-    }
-
-    // Phone number
-    if (_phoneNumberRegex.hasMatch(message)) {
-      scamScore += 2;
-      detectedSignals.add('phone_number');
-    }
-
-    // Combine with URL result
-    if (urlResult != null) {
-      if (urlResult.verdict == VerdictType.fake) {
-        verdict = VerdictType.fake;
-      } else if (urlResult.verdict == VerdictType.beCareful && scamScore > 3) {
-        verdict = VerdictType.fake;
-      } else if (urlResult.verdict == VerdictType.beCareful) {
-        verdict = VerdictType.beCareful;
-      }
-    }
-
-    // Final decision (more aggressive thanks to pattern library)
-    if (verdict == VerdictType.unknown) {
-      if (scamScore >= 6) {
-        verdict = VerdictType.fake;
-      } else if (scamScore >= 4) {
-        verdict = VerdictType.beCareful;
-      } else {
-        verdict = VerdictType.unknown;
-      }
-    }
+    final verdict = scoringResult['verdict'] as VerdictType;
+    final confidence = scoringResult['confidence'] as int;
+    final signals = List<String>.from(scoringResult['signals']);
 
     // === Generate rich, detailed reasons ===
     final reasons = ReasonsEngine.generateReasons(
       verdict: verdict,
       input: message,
       isMessage: true,
-      detectedSignals: detectedSignals,
+      detectedSignals: signals,
       url: url,
     );
 
@@ -110,6 +72,7 @@ class MessageInspector {
       checkedAt: DateTime.now(),
       isMessageMode: true,
       originalInput: message,
+      confidenceScore: confidence,
     );
   }
 }

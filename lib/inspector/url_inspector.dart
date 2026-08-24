@@ -1,6 +1,7 @@
 import 'package:trueurl/models/brand.dart';
 import 'package:trueurl/models/verdict.dart';
 import 'package:trueurl/inspector/advanced_url_analyzer.dart';
+import 'package:trueurl/inspector/scoring_engine.dart';
 
 class UrlInspector {
   static final RegExp _urlRegex = RegExp(
@@ -188,17 +189,26 @@ class UrlInspector {
       }
     }
 
-    // Final verdict decision
-    if (verdict == VerdictType.unknown && reasons.isEmpty) {
-      verdict = VerdictType.unknown;
-      reasons.add('No obvious scam signals detected in the URL structure.');
-    }
+    // Use Scoring Engine for final decision
+    final scoring = ScoringEngine.calculate(
+      input: fullUrl,
+      isMessage: false,
+      url: fullUrl,
+      path: path,
+      detectedSignals: reasons.isNotEmpty ? ['url_risk'] : [],
+    );
+
+    final finalVerdict = scoring['verdict'] as VerdictType;
+    final confidence = scoring['confidence'] as int;
 
     return CheckResult(
-      verdict: verdict,
-      title: verdict == VerdictType.fake ? 'Likely Scam Link' : 'Link Analysis',
-      reasons: reasons,
+      verdict: finalVerdict,
+      title: finalVerdict == VerdictType.fake ? 'Likely Scam Link' : 'Link Analysis',
+      reasons: reasons.isNotEmpty 
+          ? reasons 
+          : ['No obvious scam signals detected in the URL structure.'],
       checkedAt: DateTime.now(),
+      confidenceScore: confidence,
     );
   }
 }
