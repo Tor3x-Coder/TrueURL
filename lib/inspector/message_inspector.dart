@@ -1,6 +1,5 @@
 import 'package:trueurl/models/verdict.dart';
 import 'package:trueurl/inspector/url_inspector.dart';
-import 'package:trueurl/models/brand.dart';
 
 class MessageInspector {
   static final List<String> _scamKeywords = [

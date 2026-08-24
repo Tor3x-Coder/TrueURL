@@ -74,11 +74,11 @@ class UrlInspector {
 
     // === Strong Fake Detection: Brand name in path/subdomain but wrong domain ===
     final knownBrandNames = ['mtn', 'airtel', 'jamb', 'waec', 'opay', 'palmpay', 'kuda', 'firstbank'];
-    for (final brandName in knownBrandNames) {
-      if ((host.contains(brandName) || path.contains(brandName)) && 
-          !BrandBook.findByDomain(host)?.name.toLowerCase().contains(brandName) == true) {
-        // If the domain doesn't match any official brand, it's fake
-        if (BrandBook.findByDomain(host) == null) {
+    final matchedBrand = BrandBook.findByDomain(host);
+    
+    if (matchedBrand == null) {
+      for (final brandName in knownBrandNames) {
+        if (host.contains(brandName) || path.contains(brandName)) {
           return CheckResult(
             verdict: VerdictType.fake,
             title: 'Likely Scam Link',
