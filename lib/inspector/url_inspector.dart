@@ -13,7 +13,7 @@ class UrlInspector {
   );
 
   static final RegExp _suspiciousTld = RegExp(
-    r'\.(xyz|top|online|site|club|icu|fun|pw|cc|tk|ml|ga|cf)$',
+    r'\.(xyz|top|online|site|club|icu|fun|pw|cc|tk|ml|ga|cf|ng|com\.ng|net)$',
     caseSensitive: false,
   );
 
@@ -72,13 +72,33 @@ class UrlInspector {
       );
     }
 
+    // === Strong Fake Detection: Brand name in path/subdomain but wrong domain ===
+    final knownBrandNames = ['mtn', 'airtel', 'jamb', 'waec', 'opay', 'palmpay', 'kuda', 'firstbank'];
+    for (final brandName in knownBrandNames) {
+      if ((host.contains(brandName) || path.contains(brandName)) && 
+          !BrandBook.findByDomain(host)?.name.toLowerCase().contains(brandName) == true) {
+        // If the domain doesn't match any official brand, it's fake
+        if (BrandBook.findByDomain(host) == null) {
+          return CheckResult(
+            verdict: VerdictType.fake,
+            title: 'Likely Scam Link',
+            reasons: [
+              'Brand name "$brandName" is used in the link, but the domain is not an official ${brandName.toUpperCase()} site.',
+              'This is a very common impersonation technique.',
+            ],
+            checkedAt: DateTime.now(),
+          );
+        }
+      }
+    }
+
     final reasons = <String>[];
     VerdictType verdict = VerdictType.unknown;
 
     // === FAKE signals ===
     bool isFake = false;
 
-    // Known scam patterns in path
+    // Known scam patterns in path (stronger detection)
     if (path.contains('gift') ||
         path.contains('free') ||
         path.contains('claim') ||
@@ -86,18 +106,32 @@ class UrlInspector {
         path.contains('login') ||
         path.contains('update') ||
         path.contains('selected') ||
-        path.contains('winner')) {
+        path.contains('winner') ||
+        path.contains('reward') ||
+        path.contains('bonus')) {
       isFake = true;
       reasons.add('This looks like a classic "free gift / claim now" scam path.');
     }
 
-    // Celebrity + data giveaway pattern
+    // Celebrity + data giveaway pattern (stronger)
     if (fullUrl.contains('davido') ||
         fullUrl.contains('wizkid') ||
         fullUrl.contains('burna') ||
-        fullUrl.contains('data') && fullUrl.contains('gb')) {
+        fullUrl.contains('data') && fullUrl.contains('gb') ||
+        fullUrl.contains('loyalty') ||
+        fullUrl.contains('rewards')) {
       isFake = true;
-      reasons.add('Celebrity name + free data is a very common WhatsApp scam template.');
+      reasons.add('Celebrity name + free data / rewards is a very common WhatsApp scam template.');
+    }
+
+    // Brand name in path but not in domain (very strong fake signal)
+    final knownBrandsInPath = ['mtn', 'airtel', 'jamb', 'opay', 'palmpay'];
+    for (final brand in knownBrandsInPath) {
+      if (path.contains(brand) && !host.contains(brand)) {
+        isFake = true;
+        reasons.add('Brand name "$brand" appears in the link path but the domain is not official.');
+        break;
+      }
     }
 
     if (isFake) {
