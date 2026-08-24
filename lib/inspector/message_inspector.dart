@@ -1,6 +1,7 @@
 import 'package:trueurl/models/verdict.dart';
 import 'package:trueurl/inspector/url_inspector.dart';
 import 'package:trueurl/inspector/reasons_engine.dart';
+import 'package:trueurl/inspector/scam_patterns.dart';
 
 class MessageInspector {
   static final List<String> _scamKeywords = [
@@ -48,54 +49,17 @@ class MessageInspector {
       urlResult = UrlInspector.inspectUrl(url);
     }
 
-    // === Detect Signals ===
+    // === Use Advanced Scam Pattern Library ===
+    final matchedPatterns = ScamPatternLibrary.matchPatterns(message);
+    for (final pattern in matchedPatterns) {
+      scamScore += pattern.score;
+      detectedSignals.add(pattern.id);
+    }
 
-    // Brand name mismatch
+    // Brand name mismatch (still very strong)
     if (_hasBrandMismatch(message, url)) {
       scamScore += 6;
       detectedSignals.add('brand_mismatch');
-    }
-
-    // Celebrity + Cash
-    if ((lowerMessage.contains('davido') || lowerMessage.contains('wizkid') || lowerMessage.contains('burna')) &&
-        (lowerMessage.contains('cash') || lowerMessage.contains('gift') || lowerMessage.contains('n100') || lowerMessage.contains('n50'))) {
-      scamScore += 5;
-      detectedSignals.add('celebrity_cash');
-    }
-
-    // Government + Money
-    if ((lowerMessage.contains('federal government') || lowerMessage.contains('government')) &&
-        (lowerMessage.contains('palliative') || lowerMessage.contains('n50,000') || lowerMessage.contains('grant'))) {
-      scamScore += 5;
-      detectedSignals.add('government_money');
-    }
-
-    // Lottery / Win
-    if ((lowerMessage.contains('won') || lowerMessage.contains('winner') || lowerMessage.contains('congratulations')) &&
-        (lowerMessage.contains('n2,') || lowerMessage.contains('million') || lowerMessage.contains('bet9ja'))) {
-      scamScore += 5;
-      detectedSignals.add('lottery_win');
-    }
-
-    // Free data
-    if (lowerMessage.contains('free data') || lowerMessage.contains('gb')) {
-      scamScore += 3;
-      detectedSignals.add('free_data');
-    }
-
-    // Urgency + Fear
-    if (lowerMessage.contains('immediately') || lowerMessage.contains('urgent') || 
-        lowerMessage.contains('closes today') || lowerMessage.contains('before it closes') ||
-        lowerMessage.contains('account blocked') || lowerMessage.contains('fraud')) {
-      scamScore += 4;
-      detectedSignals.add('urgency_fear');
-    }
-
-    // Multiple networks
-    if ((lowerMessage.contains('mtn') && lowerMessage.contains('airtel')) ||
-        (lowerMessage.contains('mtn') && lowerMessage.contains('glo'))) {
-      scamScore += 3;
-      detectedSignals.add('multiple_networks');
     }
 
     // Phone number
@@ -108,18 +72,18 @@ class MessageInspector {
     if (urlResult != null) {
       if (urlResult.verdict == VerdictType.fake) {
         verdict = VerdictType.fake;
-      } else if (urlResult.verdict == VerdictType.beCareful && scamScore > 2) {
+      } else if (urlResult.verdict == VerdictType.beCareful && scamScore > 3) {
         verdict = VerdictType.fake;
       } else if (urlResult.verdict == VerdictType.beCareful) {
         verdict = VerdictType.beCareful;
       }
     }
 
-    // Final decision
+    // Final decision (more aggressive thanks to pattern library)
     if (verdict == VerdictType.unknown) {
-      if (scamScore >= 5) {
+      if (scamScore >= 6) {
         verdict = VerdictType.fake;
-      } else if (scamScore >= 3) {
+      } else if (scamScore >= 4) {
         verdict = VerdictType.beCareful;
       } else {
         verdict = VerdictType.unknown;

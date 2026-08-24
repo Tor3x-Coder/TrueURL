@@ -1,4 +1,5 @@
 import 'package:trueurl/models/verdict.dart';
+import 'package:trueurl/inspector/scam_patterns.dart';
 
 class ReasonsEngine {
   /// Generates detailed, human-sounding reasons based on detected signals
@@ -11,60 +12,24 @@ class ReasonsEngine {
     String? finalHost,
   }) {
     final reasons = <String>[];
-    final lowerInput = input.toLowerCase();
 
     if (verdict == VerdictType.fake) {
+      // Use matched patterns for rich reasons
+      final matchedPatterns = ScamPatternLibrary.matchPatterns(input);
+
+      for (final pattern in matchedPatterns) {
+        reasons.add(pattern.reason);
+      }
+
       // Brand impersonation
       if (detectedSignals.contains('brand_mismatch')) {
         reasons.add(
-          'A brand name (like MTN, JAMB, or Davido) is mentioned in the message, but the link domain is not an official website for that brand. This is a very common impersonation technique used by scammers.'
+          'A brand name is mentioned in the message, but the link domain is not an official website for that brand. This is one of the most common impersonation techniques used by scammers.'
         );
       }
 
-      // Celebrity + Money
-      if (detectedSignals.contains('celebrity_cash')) {
-        reasons.add(
-          'This message uses a celebrity name (Davido, Wizkid, etc.) combined with a large cash gift. Real celebrities and their teams do not randomly give away money through WhatsApp links. These are almost always scams designed to steal your details.'
-        );
-      }
-
-      // Government + Money
-      if (detectedSignals.contains('government_money')) {
-        reasons.add(
-          'Messages claiming the Federal Government is giving out money (palliative, grants, etc.) through random links are extremely common right now. The real government never asks citizens to click links sent via WhatsApp to receive money.'
-        );
-      }
-
-      // Lottery / Win
-      if (detectedSignals.contains('lottery_win')) {
-        reasons.add(
-          'Lottery or betting win messages that ask you to claim money are almost always fake. Real lotteries and betting companies do not randomly contact winners through WhatsApp with links.'
-        );
-      }
-
-      // Free data / GB
-      if (detectedSignals.contains('free_data')) {
-        reasons.add(
-          'This is the classic "free data giveaway" scam. MTN, Airtel, Glo, and 9mobile do not announce data gifts through random WhatsApp forwards. They only run official promos through their apps and verified websites.'
-        );
-      }
-
-      // Urgency + Fear
-      if (detectedSignals.contains('urgency_fear')) {
-        reasons.add(
-          'The message uses fear and urgency ("account blocked", "fraud detected", "claim immediately") to make you act without thinking. Real banks and government agencies never send panic-inducing messages with links.'
-        );
-      }
-
-      // Multiple networks
-      if (detectedSignals.contains('multiple_networks')) {
-        reasons.add(
-          'Asking you to "choose your network" (MTN, Airtel, Glo) is a very common scam template. Legitimate companies already know which network you\'re on.'
-        );
-      }
-
-      // Generic fallback for fake
-      if (reasons.isEmpty) {
+      // Generic strong fallback
+      if (reasons.isEmpty || reasons.length < 2) {
         reasons.add(
           'This message contains multiple classic scam patterns designed to create panic and urgency. Scammers use these tricks to make you click before you think.'
         );
@@ -111,6 +76,7 @@ class ReasonsEngine {
       );
     }
 
-    return reasons;
+    // Remove duplicates
+    return reasons.toSet().toList();
   }
 }
