@@ -1,5 +1,6 @@
 import 'package:trueurl/models/verdict.dart';
 import 'package:trueurl/inspector/url_inspector.dart';
+import 'package:trueurl/inspector/reasons_engine.dart';
 
 class MessageInspector {
   static final List<String> _scamKeywords = [
@@ -36,7 +37,7 @@ class MessageInspector {
   /// Inspects the full message text for scam patterns + runs URL inspector
   static CheckResult inspectMessage(String message) {
     final lowerMessage = message.toLowerCase();
-    final reasons = <String>[];
+    final detectedSignals = <String>[];
     VerdictType verdict = VerdictType.unknown;
     int scamScore = 0;
 
@@ -47,97 +48,74 @@ class MessageInspector {
       urlResult = UrlInspector.inspectUrl(url);
     }
 
-    // === Brand name mismatch (very strong signal) ===
+    // === Detect Signals ===
+
+    // Brand name mismatch
     if (_hasBrandMismatch(message, url)) {
       scamScore += 6;
-      reasons.add('Brand name mentioned in message (e.g. MTN) but the link domain is NOT official.');
+      detectedSignals.add('brand_mismatch');
     }
 
-    // === High-value scam categories ===
-    
-    // Celebrity + Money/Gift (very strong)
+    // Celebrity + Cash
     if ((lowerMessage.contains('davido') || lowerMessage.contains('wizkid') || lowerMessage.contains('burna')) &&
         (lowerMessage.contains('cash') || lowerMessage.contains('gift') || lowerMessage.contains('n100') || lowerMessage.contains('n50'))) {
       scamScore += 5;
-      reasons.add('Celebrity name + large cash gift is a very common WhatsApp scam.');
+      detectedSignals.add('celebrity_cash');
     }
 
-    // Government + Money (very strong)
+    // Government + Money
     if ((lowerMessage.contains('federal government') || lowerMessage.contains('government')) &&
         (lowerMessage.contains('palliative') || lowerMessage.contains('n50,000') || lowerMessage.contains('grant'))) {
       scamScore += 5;
-      reasons.add('Government money/palliative scams are extremely common right now.');
+      detectedSignals.add('government_money');
     }
 
-    // Lottery / Win + Money
+    // Lottery / Win
     if ((lowerMessage.contains('won') || lowerMessage.contains('winner') || lowerMessage.contains('congratulations')) &&
         (lowerMessage.contains('n2,') || lowerMessage.contains('million') || lowerMessage.contains('bet9ja'))) {
       scamScore += 5;
-      reasons.add('Lottery or betting win messages asking you to claim are almost always scams.');
+      detectedSignals.add('lottery_win');
     }
 
-    // Strong scam signals
-    for (final keyword in _scamKeywords) {
-      if (lowerMessage.contains(keyword)) {
-        scamScore++;
-        if (keyword.contains('free data') || keyword.contains('gb')) {
-          reasons.add('Mentions "free data" or large GB amounts — a very common scam hook.');
-        } else if (keyword.contains('davido') || keyword.contains('wizkid')) {
-          reasons.add('Celebrity name used to create urgency and trust.');
-        } else if (keyword.contains('claim') || keyword.contains('winner')) {
-          reasons.add('Classic "you have been selected / claim your reward" language.');
-        } else if (keyword.contains('school fees') || keyword.contains('admission')) {
-          reasons.add('Targets students and parents with education-related panic.');
-        } else if (keyword.contains('verify') || keyword.contains('login')) {
-          reasons.add('Urgent verification/login language commonly used in phishing.');
-        }
-      }
+    // Free data
+    if (lowerMessage.contains('free data') || lowerMessage.contains('gb')) {
+      scamScore += 3;
+      detectedSignals.add('free_data');
     }
 
-    // Multiple networks mentioned
+    // Urgency + Fear
+    if (lowerMessage.contains('immediately') || lowerMessage.contains('urgent') || 
+        lowerMessage.contains('closes today') || lowerMessage.contains('before it closes') ||
+        lowerMessage.contains('account blocked') || lowerMessage.contains('fraud')) {
+      scamScore += 4;
+      detectedSignals.add('urgency_fear');
+    }
+
+    // Multiple networks
     if ((lowerMessage.contains('mtn') && lowerMessage.contains('airtel')) ||
         (lowerMessage.contains('mtn') && lowerMessage.contains('glo'))) {
       scamScore += 3;
-      reasons.add('Asking you to "choose your network" is a classic scam template.');
+      detectedSignals.add('multiple_networks');
     }
 
-    // Strong urgency language
-    if (lowerMessage.contains('immediately') || lowerMessage.contains('urgent') || 
-        lowerMessage.contains('closes today') || lowerMessage.contains('before it closes')) {
-      scamScore += 3;
-      reasons.add('Uses strong urgency language ("immediately", "before it closes") to pressure you.');
-    }
-
-    // Urgency / FOMO language
-    if (lowerMessage.contains('midnight') ||
-        lowerMessage.contains('limited') ||
-        lowerMessage.contains('expires') ||
-        lowerMessage.contains('hurry') ||
-        lowerMessage.contains('everyone')) {
-      scamScore += 2;
-      reasons.add('Written to create panic and FOMO ("expires at midnight", "everyone is claiming").');
-    }
-
-    // Phone number in message
+    // Phone number
     if (_phoneNumberRegex.hasMatch(message)) {
       scamScore += 2;
-      reasons.add('Contains a phone number — scammers often ask you to contact them directly.');
+      detectedSignals.add('phone_number');
     }
 
     // Combine with URL result
     if (urlResult != null) {
       if (urlResult.verdict == VerdictType.fake) {
         verdict = VerdictType.fake;
-        reasons.addAll(urlResult.reasons);
       } else if (urlResult.verdict == VerdictType.beCareful && scamScore > 2) {
         verdict = VerdictType.fake;
       } else if (urlResult.verdict == VerdictType.beCareful) {
         verdict = VerdictType.beCareful;
-        reasons.addAll(urlResult.reasons);
       }
     }
 
-    // Final decision based on score (more aggressive)
+    // Final decision
     if (verdict == VerdictType.unknown) {
       if (scamScore >= 5) {
         verdict = VerdictType.fake;
@@ -148,9 +126,14 @@ class MessageInspector {
       }
     }
 
-    if (reasons.isEmpty) {
-      reasons.add('No strong scam patterns detected in the message text.');
-    }
+    // === Generate rich, detailed reasons ===
+    final reasons = ReasonsEngine.generateReasons(
+      verdict: verdict,
+      input: message,
+      isMessage: true,
+      detectedSignals: detectedSignals,
+      url: url,
+    );
 
     return CheckResult(
       verdict: verdict,
@@ -159,7 +142,7 @@ class MessageInspector {
           : verdict == VerdictType.beCareful
               ? 'Be careful with this message'
               : 'Message analyzed',
-      reasons: reasons.toSet().toList(),
+      reasons: reasons,
       checkedAt: DateTime.now(),
       isMessageMode: true,
       originalInput: message,
