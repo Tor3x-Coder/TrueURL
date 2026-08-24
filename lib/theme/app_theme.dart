@@ -20,7 +20,7 @@ class AppTheme {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
